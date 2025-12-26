@@ -4,7 +4,7 @@ import User from "../models/User.js"
 import bcrypt from "bcryptjs"
 import "dotenv/config"
 
-export const signup = async  (req, res)=> {
+export const signup = async (req, res) => {
     const {fullName, email, password} = req.body
 
     try {
@@ -64,4 +64,30 @@ export const signup = async  (req, res)=> {
         console.error("Error in signup controller: ", error);
         res.status(500).json({message:"Internal server error"});
     }
+}
+
+export const login = async (req, res) => {
+    const {email, password} = req.body
+    
+    try {
+        const user = await User.findOne({email})
+
+        if (!user) {
+            return res.status(400).json({message:"Invalid credentials"})
+        }
+
+        const isPasswordCorrect = await bcrypt.compare(password, user.password);
+
+        if(!isPasswordCorrect){
+            return res.status(400).json({message:"Invalid credentials"})
+        }
+
+        generateToken(user._id, res)
+    } catch (error) {
+        
+    }
+}
+
+export const logout = async (req, res) => {
+
 }
