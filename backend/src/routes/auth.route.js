@@ -5,7 +5,7 @@ import { arcjetProjection } from "../middleware/arcjet.middleware.js";
 
 const router = express.Router();
 
-router.use(arcjetProjection);
+// router.use(arcjetProjection);
 
 router.post("/signup", signup);
 router.post("/login",  login);
