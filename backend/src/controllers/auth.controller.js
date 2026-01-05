@@ -4,6 +4,7 @@ import User from "../models/User.js"
 import bcrypt from "bcryptjs"
 import "dotenv/config"
 import cloudinary from "../lib/cloudinary.js"
+
 export const signup = async (req, res) => {
     const {fullName, email, password} = req.body
 
