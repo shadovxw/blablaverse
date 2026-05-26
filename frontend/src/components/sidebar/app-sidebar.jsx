@@ -118,7 +118,7 @@ export function AppSidebar({ ...props }) {
         className="!w-[calc(var(--sidebar-width-icon)+1px)] border-e border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 flex flex-col justify-between"
       >
         <div>
-          <SidebarHeader className="flex items-center justify-center py-4 border-b border-slate-100 dark:border-slate-900">
+          <SidebarHeader className="flex h-14 items-center justify-center py-0 border-b border-slate-200/50 dark:border-slate-800/50">
             <SidebarMenu>
               <SidebarMenuItem>
                 <SidebarMenuButton size="lg" asChild className="md:h-8 md:p-0 flex items-center justify-center">
@@ -170,18 +170,18 @@ export function AppSidebar({ ...props }) {
 
       {/* 2nd Sidebar (Right Column - Lists details) */}
       <Sidebar collapsible="none" className="hidden flex-1 md:flex bg-slate-50/30 dark:bg-slate-900/10">
-        <SidebarHeader className="gap-3.5 border-b border-slate-200/50 dark:border-slate-800/50 p-4">
-          <div className="flex w-full items-center justify-between">
-            <div className="text-base font-bold text-slate-800 dark:text-slate-200">
-              {activeItem?.title}
-            </div>
-            {activeItem?.title === "Chats" && (
-              <Label className="flex items-center gap-2 text-xs font-normal text-slate-500 dark:text-slate-400 cursor-pointer">
-                <span>Unreads</span>
-                <Switch className="shadow-none" />
-              </Label>
-            )}
+        <SidebarHeader className="h-14 flex flex-row items-center justify-between border-b border-slate-200/50 dark:border-slate-800/50 px-4 py-0 gap-0">
+          <div className="text-base font-bold text-slate-800 dark:text-slate-200">
+            {activeItem?.title}
           </div>
+          {activeItem?.title === "Chats" && (
+            <Label className="flex items-center gap-2 text-xs font-normal text-slate-500 dark:text-slate-400 cursor-pointer">
+              <span>Unreads</span>
+              <Switch className="shadow-none" />
+            </Label>
+          )}
+        </SidebarHeader>
+        <div className="p-3 bg-transparent flex items-center shrink-0">
           <div className="relative w-full">
             <SidebarInput
               placeholder="Search..."
@@ -191,7 +191,7 @@ export function AppSidebar({ ...props }) {
             />
             <SearchIcon className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-slate-400 pointer-events-none" />
           </div>
-        </SidebarHeader>
+        </div>
 
         <SidebarContent className="p-2">
           <SidebarGroup className="p-0">

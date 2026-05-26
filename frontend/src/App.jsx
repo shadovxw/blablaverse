@@ -4,6 +4,7 @@ import ChatPage from "./pages/ChatPage";
 import LoginPage from "./pages/LoginPage";
 import SignUpPage from "./pages/SignUpPage";
 import { useAuthStore } from "./store/useAuthStore";
+import { useThemeStore } from "./store/useThemeStore";
 import { useEffect } from "react";
 import PageLoader from "./components/PageLoader";
 import { SidebarProvider } from "@/components/ui/sidebar";
@@ -18,10 +19,19 @@ import { Toaster } from "react-hot-toast";
 function App() {
   const { checkAuth, isCheckingAuth, authUser } = useAuthStore();
   const { selectedUser } = useChatStore();
+  const { theme } = useThemeStore();
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  useEffect(() => {
+    if (theme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+  }, [theme]);
 
   if (isCheckingAuth) return <PageLoader />;
 
