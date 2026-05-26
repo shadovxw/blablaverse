@@ -26,8 +26,6 @@ export default function ChatContainer() {
 
     return (
         <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-900/30">
-            <ChatHeader />
-
             <div className="flex-1 overflow-y-auto p-4 space-y-4 min-h-0">
                 {isMessagesLoading ? (
                     <MessagesLoadingSkeleton />
