@@ -18,17 +18,17 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { 
-  ChevronsUpDownIcon, 
-  SparklesIcon, 
-  BellIcon, 
-  LogOutIcon, 
-  MoonIcon, 
-  SunIcon, 
-  UserIcon, 
-  XIcon, 
-  CameraIcon, 
-  Loader2Icon 
+import {
+  ChevronsUpDownIcon,
+  SparklesIcon,
+  BellIcon,
+  LogOutIcon,
+  MoonIcon,
+  SunIcon,
+  UserIcon,
+  XIcon,
+  CameraIcon,
+  Loader2Icon
 } from "lucide-react"
 import { useState, useRef, useEffect } from "react"
 import { useAuthStore } from "@/store/useAuthStore"
@@ -149,7 +149,7 @@ export function NavUser({
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
               <DropdownMenuGroup>
-                <DropdownMenuItem onClick={() => window.open("https://github.com/shadovxw", "_blank")} className="cursor-pointer">
+                <DropdownMenuItem onClick={() => window.open("https://portfolio.shadovxw.me", "_blank")} className="cursor-pointer">
                   <SparklesIcon />
                   Go to shadovxw page
                 </DropdownMenuItem>
@@ -160,7 +160,7 @@ export function NavUser({
                   <UserIcon />
                   Update Profile
                 </DropdownMenuItem>
-                
+
                 <DropdownMenuItem onClick={toggleTheme} className="justify-between cursor-pointer">
                   <div className="flex items-center gap-2">
                     {theme === "dark" ? <MoonIcon /> : <SunIcon />}
@@ -168,7 +168,7 @@ export function NavUser({
                   </div>
                   <Switch checked={theme === "dark"} className="pointer-events-none" />
                 </DropdownMenuItem>
-                
+
                 <DropdownMenuItem onClick={toggleSound} className="justify-between cursor-pointer">
                   <div className="flex items-center gap-2">
                     <BellIcon />
@@ -189,16 +189,16 @@ export function NavUser({
 
       {/* UPDATE PROFILE MODAL OVERLAY */}
       {isProfileModalOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/40 backdrop-blur-md transition-all duration-300"
           onClick={() => setIsProfileModalOpen(false)}
         >
-          <div 
+          <div
             className="relative w-full max-w-md rounded-3xl border border-slate-200 dark:border-slate-800 bg-popover p-6 shadow-2xl text-popover-foreground scale-in animate-in zoom-in-95 duration-200 mx-4"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Close button */}
-            <button 
+            <button
               onClick={() => setIsProfileModalOpen(false)}
               className="absolute right-4 top-4 rounded-xl p-1.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
@@ -217,10 +217,10 @@ export function NavUser({
               <div className="flex flex-col items-center justify-center gap-2.5">
                 <div className="relative group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                   <Avatar className="size-24 rounded-full border-2 border-primary/20 group-hover:border-primary/50 transition-colors duration-200">
-                    <AvatarImage 
-                      src={selectedImg || user.avatar} 
-                      alt={user.name} 
-                      className="object-cover size-full" 
+                    <AvatarImage
+                      src={selectedImg || user.avatar}
+                      alt={user.name}
+                      className="object-cover size-full"
                     />
                     <AvatarFallback className="text-xl font-bold">
                       {user.name ? user.name.substring(0, 2).toUpperCase() : "US"}
@@ -230,12 +230,12 @@ export function NavUser({
                     <CameraIcon className="size-6 text-white" />
                   </div>
                 </div>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleImageUpload} 
-                  accept="image/*" 
-                  className="hidden" 
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleImageUpload}
+                  accept="image/*"
+                  className="hidden"
                 />
                 <span className="text-xs text-slate-400">Click to upload photo</span>
               </div>

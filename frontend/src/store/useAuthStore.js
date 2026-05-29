@@ -1,18 +1,34 @@
 import { create } from "zustand";
 import { axiosInstanstnce } from "../lib/axios.js";
+import { socket } from "../lib/socket.js";
 import toast from "react-hot-toast";
 
-export const useAuthStore = create((set) => ({
+export const useAuthStore = create((set, get) => ({
     authUser: null,
     isCheckingAuth: true,
     isSigningUp: false,
     isLoggingIn: false,
     onlineUsers: [],
 
+    connectSocket: () => {
+        if (socket.connected) return;
+        socket.connect();
+
+        // keep the online-users list in sync with the server
+        socket.off("getOnlineUsers");
+        socket.on("getOnlineUsers", (userIds) => set({ onlineUsers: userIds }));
+    },
+
+    disconnectSocket: () => {
+        if (socket.connected) socket.disconnect();
+        set({ onlineUsers: [] });
+    },
+
     checkAuth: async () => {
         try {
             const res = await axiosInstanstnce.get("/auth/check");
             set({ authUser: res.data });
+            get().connectSocket();
         } catch (error) {
             console.log("Error in authCheck:", error);
             set({ authUser: null });
@@ -26,6 +42,7 @@ export const useAuthStore = create((set) => ({
         try {
             const res = await axiosInstanstnce.post("/auth/signup", data);
             set({ authUser: res.data });
+            get().connectSocket();
 
             toast.success("Account created succesfully!")
 
@@ -41,6 +58,7 @@ export const useAuthStore = create((set) => ({
         try {
             const res = await axiosInstanstnce.post("/auth/login", data);
             set({ authUser: res.data });
+            get().connectSocket();
             toast.success("Logged in successfully!");
         } catch (error) {
             toast.error(error.response?.data?.message || error.message);
@@ -53,6 +71,7 @@ export const useAuthStore = create((set) => ({
         try {
             await axiosInstanstnce.post("/auth/logout");
             set({ authUser: null });
+            get().disconnectSocket();
             toast.success("Logged out successfully!");
         } catch (error) {
             toast.error(error.response?.data?.message || error.message);

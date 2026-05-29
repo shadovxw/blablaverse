@@ -1,6 +1,5 @@
 import { Navigate, Route, Routes } from "react-router";
 import * as React from "react";
-import ChatPage from "./pages/ChatPage";
 import LoginPage from "./pages/LoginPage";
 import SignUpPage from "./pages/SignUpPage";
 import { useAuthStore } from "./store/useAuthStore";
@@ -18,12 +17,19 @@ import { Toaster } from "react-hot-toast";
 
 function App() {
   const { checkAuth, isCheckingAuth, authUser } = useAuthStore();
-  const { selectedUser } = useChatStore();
+  const { selectedUser, subscribeToChat, unsubscribeFromChat } = useChatStore();
   const { theme } = useThemeStore();
 
   useEffect(() => {
     checkAuth();
   }, [checkAuth]);
+
+  // Register realtime chat listeners once the user is authenticated.
+  useEffect(() => {
+    if (!authUser) return;
+    subscribeToChat();
+    return () => unsubscribeFromChat();
+  }, [authUser, subscribeToChat, unsubscribeFromChat]);
 
   useEffect(() => {
     if (theme === "dark") {

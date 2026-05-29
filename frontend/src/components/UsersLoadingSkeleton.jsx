@@ -1,18 +1,17 @@
-function UsersLoadingSkeleton() {
-    return (
-        <div className="space-y-2">
-            {[1, 2, 3].map((item) => (
-                <div key={item} className="bg-slate-800/30 p-4 rounded-lg animate-pulse">
-                    <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-slate-700 rounded-full"></div>
-                        <div className="flex-1">
-                            <div className="h-4 bg-slate-700 rounded w-3/4 mb-2"></div>
-                            <div className="h-3 bg-slate-700/70 rounded w-1/2"></div>
-                        </div>
-                    </div>
-                </div>
-            ))}
+import { Skeleton } from "@/components/ui/skeleton"
+
+export default function UsersLoadingSkeleton() {
+  return (
+    <div className="space-y-2">
+      {[1, 2, 3].map((item) => (
+        <div key={item} className="flex items-center gap-3 px-1 py-2">
+          <Skeleton className="h-8 w-8 rounded-full shrink-0" />
+          <div className="flex-1 space-y-1.5">
+            <Skeleton className="h-3 w-3/4" />
+            <Skeleton className="h-2.5 w-1/2" />
+          </div>
         </div>
-    );
+      ))}
+    </div>
+  )
 }
-export default UsersLoadingSkeleton;

@@ -4,6 +4,10 @@ import {
     getChatPartners,
     getMessagesByUserId,
     sendMessage,
+    markMessagesAsRead,
+    deleteMessage,
+    reactToMessage,
+    editMessage,
 } from "../controllers/message.controller.js";
 import { protectRoute } from "../middleware/auth.middleware.js";
 import { arcjetProtection } from "../middleware/arcjet.middleware.js";
@@ -18,5 +22,9 @@ router.get("/contacts", getAllContacts);
 router.get("/chats", getChatPartners);
 router.get("/:id", getMessagesByUserId);
 router.post("/send/:id", sendMessage);
+router.put("/read/:id", markMessagesAsRead);
+router.put("/react/:id", reactToMessage);
+router.put("/edit/:id", editMessage);
+router.delete("/:id", deleteMessage);
 
 export default router;

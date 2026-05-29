@@ -57,6 +57,7 @@ const data = {
 export function AppSidebar({ ...props }) {
   const [activeItem, setActiveItem] = React.useState(data.navMain[0])
   const [searchQuery, setSearchQuery] = React.useState("")
+  const [showUnreadOnly, setShowUnreadOnly] = React.useState(false)
   
   const {
     chats,
@@ -89,9 +90,11 @@ export function AppSidebar({ ...props }) {
   }
 
   // Filter lists based on search
-  const filteredChats = chats.filter((chat) =>
-    chat.fullName.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const filteredChats = chats.filter((chat) => {
+    const matchesSearch = chat.fullName.toLowerCase().includes(searchQuery.toLowerCase())
+    const matchesUnread = !showUnreadOnly || (chat.unreadCount || 0) > 0
+    return matchesSearch && matchesUnread
+  })
 
   const filteredContacts = allContacts.filter((contact) =>
     contact.fullName.toLowerCase().includes(searchQuery.toLowerCase())
@@ -177,7 +180,7 @@ export function AppSidebar({ ...props }) {
           {activeItem?.title === "Chats" && (
             <Label className="flex items-center gap-2 text-xs font-normal text-slate-500 dark:text-slate-400 cursor-pointer">
               <span>Unreads</span>
-              <Switch className="shadow-none" />
+              <Switch checked={showUnreadOnly} onCheckedChange={setShowUnreadOnly} className="shadow-none" />
             </Label>
           )}
         </SidebarHeader>

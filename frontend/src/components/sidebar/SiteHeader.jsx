@@ -2,13 +2,33 @@ import React from "react"
 import { SidebarTrigger } from "@/components/ui/sidebar"
 import { useChatStore } from "@/store/useChatStore"
 import { useAuthStore } from "@/store/useAuthStore"
-import { MoreVerticalIcon } from "lucide-react"
+import { MoreVerticalIcon, SearchIcon } from "lucide-react"
+
+const formatLastSeen = (date) => {
+  if (!date) return "Offline"
+  const d = new Date(date)
+  const now = new Date()
+  const time = d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  const isToday = d.toDateString() === now.toDateString()
+  const yesterday = new Date()
+  yesterday.setDate(now.getDate() - 1)
+  const isYesterday = d.toDateString() === yesterday.toDateString()
+  if (isToday) return `last seen today at ${time}`
+  if (isYesterday) return `last seen yesterday at ${time}`
+  return `last seen ${d.toLocaleDateString([], { month: "short", day: "numeric" })}`
+}
 
 export default function SiteHeader() {
-  const { selectedUser } = useChatStore()
+  const { selectedUser, isTyping, messageSearchOpen, toggleMessageSearch } = useChatStore()
   const { onlineUsers } = useAuthStore()
 
   const isOnline = selectedUser && onlineUsers.includes(selectedUser._id)
+
+  // Status priority: typing > online > last seen > offline
+  let statusText = "Offline"
+  if (isTyping) statusText = "typing…"
+  else if (isOnline) statusText = "Active now"
+  else if (selectedUser?.lastSeen) statusText = formatLastSeen(selectedUser.lastSeen)
 
   return (
     <header className="flex h-14 shrink-0 items-center justify-between px-4 border-b border-slate-200/50 dark:border-slate-800/50 bg-background/50 backdrop-blur-md">
@@ -36,8 +56,14 @@ export default function SiteHeader() {
               <span className="text-sm font-medium text-slate-900 dark:text-slate-100 leading-none">
                 {selectedUser.fullName}
               </span>
-              <span className="text-[10px] text-slate-500 dark:text-slate-400 mt-1 leading-none">
-                {isOnline ? "Active now" : "Offline"}
+              <span
+                className={`text-[10px] mt-1 leading-none ${
+                  isTyping
+                    ? "text-primary font-medium"
+                    : "text-slate-500 dark:text-slate-400"
+                }`}
+              >
+                {statusText}
               </span>
             </div>
           </div>
@@ -50,8 +76,21 @@ export default function SiteHeader() {
         )}
       </div>
 
-      {/* Right side: vertical three dot button */}
-      <div>
+      {/* Right side: search + three-dot menu */}
+      <div className="flex items-center gap-1">
+        {selectedUser && (
+          <button
+            onClick={toggleMessageSearch}
+            title="Search messages"
+            className={`h-8 w-8 rounded-lg flex items-center justify-center cursor-pointer transition-colors ${
+              messageSearchOpen
+                ? "bg-slate-100 dark:bg-slate-800 text-primary"
+                : "hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200"
+            }`}
+          >
+            <SearchIcon className="size-[18px]" />
+          </button>
+        )}
         <button className="h-8 w-8 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 cursor-pointer transition-colors">
           <MoreVerticalIcon className="size-5" />
         </button>
