@@ -11,13 +11,14 @@ import { AppSidebar } from "@/components/sidebar/app-sidebar";
 import HomePage from "./pages/HomePage/page";
 import SiteHeader from "./components/sidebar/SiteHeader";
 import ChatInterface from "./components/chat/ChatInterface";
+import GroupInfoModal from "./components/sidebar/GroupInfoModal";
 import { useChatStore } from "./store/useChatStore";
 
 import { Toaster } from "react-hot-toast";
 
 function App() {
   const { checkAuth, isCheckingAuth, authUser } = useAuthStore();
-  const { selectedUser, subscribeToChat, unsubscribeFromChat } = useChatStore();
+  const { selectedUser, selectedGroup, subscribeToChat, unsubscribeFromChat } = useChatStore();
   const { theme } = useThemeStore();
 
   useEffect(() => {
@@ -62,12 +63,13 @@ function App() {
               <main className="flex-1 overflow-hidden min-h-0 pt-4">
                 <Routes>
                   {/* <Route path="/" element={<ChatPage />} /> */}
-                  <Route path="/" element={selectedUser ? <ChatInterface /> : <HomePage />} />
+                  <Route path="/" element={selectedUser || selectedGroup ? <ChatInterface /> : <HomePage />} />
                   <Route path="*" element={<Navigate to="/" />} />
                 </Routes>
               </main>
             </div>
           </SidebarProvider>
+          <GroupInfoModal />
         </div>
       ) : (
         <div className="min-h-screen bg-slate-900 relative flex items-center justify-center p-4 overflow-hidden">

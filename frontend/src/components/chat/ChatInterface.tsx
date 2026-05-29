@@ -185,6 +185,10 @@ function ReactionChips({ reactions }: { reactions?: { userId: string; emoji: str
   )
 }
 
+// Sender id from a message — group messages populate senderId as an object, 1:1 keep it a string.
+const senderIdOf = (m: any) =>
+  m && typeof m.senderId === "object" && m.senderId !== null ? m.senderId._id : m?.senderId
+
 // Renders message text with clickable URLs.
 const linkifyText = (text: string) => {
   const parts = text.split(/(https?:\/\/[^\s]+)/g)
@@ -225,8 +229,10 @@ export default function ChatInterface() {
   const {
     messages,
     getMessages,
+    getGroupMessages,
     isMessagesLoading,
     selectedUser,
+    selectedGroup,
     sendMessage,
     isSoundEnabled,
     isTyping,
@@ -243,6 +249,9 @@ export default function ChatInterface() {
     reactToMessage,
     editMessage,
   } = useChatStore()
+
+  const isGroup = !!selectedGroup
+  const target = selectedGroup || selectedUser
   const { authUser } = useAuthStore()
   const { playRandomKeyStrokeSound } = useKeyboardSound()
 
@@ -274,15 +283,18 @@ export default function ChatInterface() {
     }
   }, [editingMessage])
 
-  // Fetch messages when selected user changes
+  // Fetch messages when the selected conversation changes (user or group)
   React.useEffect(() => {
-    if (selectedUser?._id) {
+    if (selectedGroup?._id) {
+      getGroupMessages(selectedGroup._id)
+    } else if (selectedUser?._id) {
       getMessages(selectedUser._id)
     }
     // Reset state
     setText("")
     setImagePreview(null)
-  }, [selectedUser?._id, getMessages])
+    setFilePreview(null)
+  }, [selectedUser?._id, selectedGroup?._id, getMessages, getGroupMessages])
 
   // Scroll to bottom on new messages (and when the typing indicator appears)
   React.useEffect(() => {
@@ -443,9 +455,12 @@ export default function ChatInterface() {
     }
   }
 
-  if (!selectedUser) return null
+  if (!target) return null
 
-  const partnerInitials = getInitials(selectedUser.fullName)
+  const targetName = isGroup ? selectedGroup.name : selectedUser.fullName
+  // partner identity for the 1:1 typing indicator (groups don't show typing)
+  const partnerInitials = getInitials(isGroup ? selectedGroup.name : selectedUser.fullName)
+  const partnerAvatar = isGroup ? selectedGroup.avatar : selectedUser.profilePic
   const myInitials = getInitials(authUser?.fullName)
 
   // In-conversation search
@@ -538,16 +553,31 @@ export default function ChatInterface() {
               No message history
             </h3>
             <p className="text-xs text-slate-400 dark:text-slate-500 max-w-[260px] leading-normal mt-1">
-              Say hello to {selectedUser.fullName} to start this conversation!
+              Say hello to {targetName} to start this conversation!
             </p>
           </div>
         ) : (
           /* Messages List */
           <div className="max-w-3xl mx-auto space-y-1">
             {messages.map((message: any, index: number) => {
-              const isMyMessage = message.senderId === authUser?._id
+              const msgSenderId = senderIdOf(message)
+              const isMyMessage = msgSenderId === authUser?._id
               const prev = messages[index - 1]
               const next = messages[index + 1]
+
+              // Per-message sender identity (group messages populate the sender object)
+              const senderObj = typeof message.senderId === "object" ? message.senderId : null
+              const senderAvatar = senderObj
+                ? senderObj.profilePic
+                : isMyMessage
+                ? authUser?.profilePic
+                : selectedUser?.profilePic
+              const senderName = senderObj
+                ? senderObj.fullName
+                : isMyMessage
+                ? authUser?.fullName
+                : selectedUser?.fullName
+              const senderInitials = getInitials(senderName)
 
               // Show a date divider whenever the calendar day changes.
               const showDateSeparator =
@@ -556,12 +586,12 @@ export default function ChatInterface() {
               // First/last message in a run from the same sender (within the group window).
               const isFirstInGroup =
                 showDateSeparator ||
-                prev.senderId !== message.senderId ||
+                senderIdOf(prev) !== msgSenderId ||
                 !withinGroupWindow(prev.createdAt, message.createdAt)
 
               const isLastInGroup =
                 !next ||
-                next.senderId !== message.senderId ||
+                senderIdOf(next) !== msgSenderId ||
                 !isSameDay(message.createdAt, next.createdAt) ||
                 !withinGroupWindow(message.createdAt, next.createdAt)
 
@@ -586,9 +616,9 @@ export default function ChatInterface() {
                     {!isMyMessage &&
                       (isLastInGroup ? (
                         <Avatar className="h-8 w-8 rounded-full border border-border shrink-0">
-                          <AvatarImage src={selectedUser.profilePic} alt={selectedUser.fullName} />
+                          <AvatarImage src={senderAvatar} alt={senderName} />
                           <AvatarFallback className="text-[10px] bg-muted text-muted-foreground font-semibold">
-                            {partnerInitials}
+                            {senderInitials}
                           </AvatarFallback>
                         </Avatar>
                       ) : (
@@ -609,6 +639,10 @@ export default function ChatInterface() {
 
                     {/* Message column */}
                     <div className={cn("flex flex-col max-w-[70%]", isMyMessage ? "items-end" : "items-start")}>
+                      {/* Sender name for incoming group messages */}
+                      {isGroup && !isMyMessage && isFirstInGroup && (
+                        <span className="text-[11px] font-medium text-primary px-1 mb-0.5">{senderName}</span>
+                      )}
                       {message.deleted ? (
                         <div
                           className={cn(
@@ -783,11 +817,11 @@ export default function ChatInterface() {
           </div>
         )}
 
-        {/* Typing indicator */}
-        {isTyping && (
+        {/* Typing indicator (1:1 only) */}
+        {isTyping && !isGroup && (
           <div className="max-w-3xl mx-auto flex gap-2 items-end justify-start mt-3">
             <Avatar className="h-8 w-8 rounded-full border border-border shrink-0">
-              <AvatarImage src={selectedUser.profilePic} alt={selectedUser.fullName} />
+              <AvatarImage src={partnerAvatar} alt={targetName} />
               <AvatarFallback className="text-[10px] bg-muted text-muted-foreground font-semibold">
                 {partnerInitials}
               </AvatarFallback>
@@ -812,7 +846,13 @@ export default function ChatInterface() {
               <p className="text-[11px] font-medium text-primary">
                 {editingMessage
                   ? "Editing message"
-                  : `Replying to ${replyingTo.senderId === authUser?._id ? "yourself" : selectedUser.fullName}`}
+                  : `Replying to ${
+                      senderIdOf(replyingTo) === authUser?._id
+                        ? "yourself"
+                        : (typeof replyingTo.senderId === "object" && replyingTo.senderId?.fullName) ||
+                          selectedUser?.fullName ||
+                          "member"
+                    }`}
               </p>
               <p className="text-xs text-muted-foreground truncate">
                 {editingMessage

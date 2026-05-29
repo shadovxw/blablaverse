@@ -20,6 +20,11 @@ const userSchema = new mongoose.Schema({
         type: String,
         default: ""
     },
+    status:{
+        type: String,
+        default: "Hey there! I am using Blablaverse.",
+        maxlength: 200
+    },
     lastSeen:{
         type: Date,
         default: Date.now

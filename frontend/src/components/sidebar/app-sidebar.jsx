@@ -18,11 +18,13 @@ import {
   SidebarMenuItem,
   useSidebar,
 } from "@/components/ui/sidebar"
-import { MessageSquareIcon, UsersIcon, FolderIcon, ArchiveIcon, TerminalIcon, SearchIcon } from "lucide-react"
+import { MessageSquareIcon, UsersIcon, FolderIcon, ArchiveIcon, TerminalIcon, SearchIcon, PlusIcon } from "lucide-react"
 import { useChatStore } from "@/store/useChatStore"
 import { useAuthStore } from "@/store/useAuthStore"
 import SidebarChatsList from "./SidebarChatsList"
 import SidebarContactList from "./SidebarContactList"
+import SidebarGroupsList from "./SidebarGroupsList"
+import CreateGroupModal from "./CreateGroupModal"
 import UsersLoadingSkeleton from "@/components/UsersLoadingSkeleton"
 
 const data = {
@@ -58,15 +60,21 @@ export function AppSidebar({ ...props }) {
   const [activeItem, setActiveItem] = React.useState(data.navMain[0])
   const [searchQuery, setSearchQuery] = React.useState("")
   const [showUnreadOnly, setShowUnreadOnly] = React.useState(false)
-  
+  const [showCreateGroup, setShowCreateGroup] = React.useState(false)
+
   const {
     chats,
+    groups,
     allContacts,
     isUsersLoading,
     selectedUser,
+    selectedGroup,
     setSelectedUser,
+    setSelectedGroup,
     getMyChatPartners,
     getAllContacts,
+    getGroups,
+    createGroup,
   } = useChatStore()
 
   const { authUser, onlineUsers } = useAuthStore()
@@ -78,7 +86,8 @@ export function AppSidebar({ ...props }) {
   React.useEffect(() => {
     getMyChatPartners()
     getAllContacts()
-  }, [getMyChatPartners, getAllContacts])
+    getGroups()
+  }, [getMyChatPartners, getAllContacts, getGroups])
 
   // Handle clicking a user from the lists
   const handleSelectUser = (user) => {
@@ -88,6 +97,17 @@ export function AppSidebar({ ...props }) {
       navigate("/")
     }
   }
+
+  const handleSelectGroup = (group) => {
+    setSelectedGroup(group)
+    if (location.pathname !== "/") {
+      navigate("/")
+    }
+  }
+
+  const filteredGroups = groups.filter((g) =>
+    g.name.toLowerCase().includes(searchQuery.toLowerCase())
+  )
 
   // Filter lists based on search
   const filteredChats = chats.filter((chat) => {
@@ -109,6 +129,7 @@ export function AppSidebar({ ...props }) {
     : null
 
   return (
+    <>
     <Sidebar
       collapsible="icon"
       className="overflow-hidden *:data-[sidebar=sidebar]:flex-row border-slate-200 dark:border-slate-800"
@@ -183,6 +204,14 @@ export function AppSidebar({ ...props }) {
               <Switch checked={showUnreadOnly} onCheckedChange={setShowUnreadOnly} className="shadow-none" />
             </Label>
           )}
+          {activeItem?.title === "Groups" && (
+            <button
+              onClick={() => setShowCreateGroup(true)}
+              className="flex items-center gap-1 text-xs font-medium text-primary hover:text-primary/80 cursor-pointer"
+            >
+              <PlusIcon className="size-4" /> New
+            </button>
+          )}
         </SidebarHeader>
         <div className="p-3 bg-transparent flex items-center shrink-0">
           <div className="relative w-full">
@@ -218,9 +247,11 @@ export function AppSidebar({ ...props }) {
                   onlineUsers={onlineUsers}
                 />
               ) : activeItem.title === "Groups" ? (
-                <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-sm">
-                  Groups feature coming soon!
-                </div>
+                <SidebarGroupsList
+                  groups={filteredGroups}
+                  selectedGroup={selectedGroup}
+                  onSelectGroup={handleSelectGroup}
+                />
               ) : (
                 <div className="text-center py-8 text-slate-400 dark:text-slate-500 text-sm">
                   Archived chats coming soon!
@@ -231,5 +262,17 @@ export function AppSidebar({ ...props }) {
         </SidebarContent>
       </Sidebar>
     </Sidebar>
+
+    {showCreateGroup && (
+      <CreateGroupModal
+        contacts={allContacts}
+        onClose={(group) => {
+          setShowCreateGroup(false)
+          if (group) handleSelectGroup(group)
+        }}
+        onCreate={createGroup}
+      />
+    )}
+    </>
   )
 }

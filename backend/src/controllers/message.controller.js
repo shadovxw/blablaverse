@@ -2,6 +2,33 @@ import cloudinary from "../lib/cloudinary.js";
 import { getReceiverSocketId, io } from "../lib/socket.js";
 import Message from "../models/Message.js";
 import User from "../models/User.js";
+import Group from "../models/Group.js";
+
+// True if the user may act within this message's conversation (1:1 party or group member).
+const isParticipant = async (message, userId) => {
+    if (message.groupId) {
+        const group = await Group.findById(message.groupId).select("members");
+        return !!group && group.members.some((m) => m.equals(userId));
+    }
+    return message.senderId.equals(userId) || message.receiverId.equals(userId);
+};
+
+// Emit an event to everyone in the message's conversation except the actor.
+const emitToConversation = async (message, event, payload, actorId) => {
+    if (message.groupId) {
+        const group = await Group.findById(message.groupId).select("members");
+        if (!group) return;
+        for (const m of group.members) {
+            if (m.equals(actorId)) continue;
+            const sid = getReceiverSocketId(m.toString());
+            if (sid) io.to(sid).emit(event, payload);
+        }
+    } else {
+        const otherId = message.senderId.equals(actorId) ? message.receiverId : message.senderId;
+        const sid = getReceiverSocketId(otherId.toString());
+        if (sid) io.to(sid).emit(event, payload);
+    }
+};
 
 const URL_REGEX = /(https?:\/\/[^\s]+)/i;
 
@@ -213,11 +240,8 @@ export const deleteMessage = async (req, res) => {
         message.file = undefined;
         await message.save();
 
-        // notify the receiver so their view updates in realtime
-        const receiverSocketId = getReceiverSocketId(message.receiverId);
-        if (receiverSocketId) {
-            io.to(receiverSocketId).emit("messageDeleted", { messageId: message._id.toString() });
-        }
+        // notify the rest of the conversation so their view updates in realtime
+        await emitToConversation(message, "messageDeleted", { messageId: message._id.toString() }, myId);
 
         res.status(200).json(message);
     } catch (error) {
@@ -238,7 +262,7 @@ export const reactToMessage = async (req, res) => {
         if (!message) return res.status(404).json({ message: "Message not found" });
 
         // only participants in the conversation can react
-        if (!message.senderId.equals(myId) && !message.receiverId.equals(myId)) {
+        if (!(await isParticipant(message, myId))) {
             return res.status(403).json({ message: "Not allowed" });
         }
 
@@ -255,15 +279,13 @@ export const reactToMessage = async (req, res) => {
 
         await message.save();
 
-        // notify the other participant in realtime
-        const otherUserId = message.senderId.equals(myId) ? message.receiverId : message.senderId;
-        const otherSocketId = getReceiverSocketId(otherUserId.toString());
-        if (otherSocketId) {
-            io.to(otherSocketId).emit("messageReaction", {
-                messageId: message._id.toString(),
-                reactions: message.reactions,
-            });
-        }
+        // notify the rest of the conversation in realtime
+        await emitToConversation(
+            message,
+            "messageReaction",
+            { messageId: message._id.toString(), reactions: message.reactions },
+            myId
+        );
 
         res.status(200).json(message.reactions);
     } catch (error) {
@@ -291,14 +313,16 @@ export const editMessage = async (req, res) => {
         message.editedAt = new Date();
         await message.save();
 
-        const receiverSocketId = getReceiverSocketId(message.receiverId.toString());
-        if (receiverSocketId) {
-            io.to(receiverSocketId).emit("messageEdited", {
+        await emitToConversation(
+            message,
+            "messageEdited",
+            {
                 messageId: message._id.toString(),
                 text: message.text,
                 editedAt: message.editedAt,
-            });
-        }
+            },
+            myId
+        );
 
         res.status(200).json(message);
     } catch (error) {

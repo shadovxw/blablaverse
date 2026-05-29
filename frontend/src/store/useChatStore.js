@@ -6,17 +6,23 @@ import toast from "react-hot-toast";
 export const useChatStore = create((set, get) => ({
     allContacts: [],
     chats: [],
+    groups: [],
     messages: [],
     activeTab: "chats",
     selectedUser: null,
+    selectedGroup: null,
     isUsersLoading: false,
+    isGroupsLoading: false,
     isMessagesLoading: false,
     isTyping: false,
     messageSearchOpen: false,
     messageSearchQuery: "",
     replyingTo: null,
     editingMessage: null,
+    groupInfoOpen: false,
     isSoundEnabled: localStorage.getItem("soundEnabled") === "true",
+
+    setGroupInfoOpen: (v) => set({ groupInfoOpen: v }),
 
     setReplyingTo: (msg) => set({ replyingTo: msg, editingMessage: null }),
     setEditingMessage: (msg) => set({ editingMessage: msg, replyingTo: null }),
@@ -35,26 +41,48 @@ export const useChatStore = create((set, get) => ({
     setSelectedUser: (user) =>
         set({
             selectedUser: user,
+            selectedGroup: null,
             isTyping: false,
             messageSearchOpen: false,
             messageSearchQuery: "",
             replyingTo: null,
             editingMessage: null,
+            groupInfoOpen: false,
+        }),
+
+    setSelectedGroup: (group) =>
+        set({
+            selectedGroup: group,
+            selectedUser: null,
+            isTyping: false,
+            messageSearchOpen: false,
+            messageSearchQuery: "",
+            replyingTo: null,
+            editingMessage: null,
+            groupInfoOpen: false,
         }),
 
     // ---- realtime ----
     subscribeToChat: () => {
         socket.off("newMessage");
         socket.on("newMessage", (newMessage) => {
-            const { selectedUser, messages } = get();
-            const isFromOpenChat = selectedUser && newMessage.senderId === selectedUser._id;
-            if (isFromOpenChat) {
-                set({ messages: [...messages, newMessage] });
-                // we're looking at this chat — immediately mark it read
-                get().markMessagesAsRead(newMessage.senderId);
+            const { selectedUser, selectedGroup, messages } = get();
+            if (newMessage.groupId) {
+                // group message
+                if (selectedGroup && newMessage.groupId === selectedGroup._id) {
+                    set({ messages: [...messages, newMessage] });
+                    get().markGroupRead(selectedGroup._id);
+                }
+                get().getGroups();
+            } else {
+                // 1:1 message
+                const isFromOpenChat = selectedUser && newMessage.senderId === selectedUser._id;
+                if (isFromOpenChat) {
+                    set({ messages: [...messages, newMessage] });
+                    get().markMessagesAsRead(newMessage.senderId);
+                }
+                get().getMyChatPartners();
             }
-            // refresh the chat list so new conversations and ordering stay current
-            get().getMyChatPartners();
         });
 
         socket.off("typing");
@@ -122,6 +150,26 @@ export const useChatStore = create((set, get) => ({
                 ),
             });
         });
+
+        // group lifecycle events
+        socket.off("newGroup");
+        socket.on("newGroup", (group) => {
+            const exists = get().groups.some((g) => g._id === group._id);
+            if (!exists) set({ groups: [group, ...get().groups] });
+        });
+
+        socket.off("groupUpdated");
+        socket.on("groupUpdated", (group) => {
+            get().applyGroupUpdate(group);
+        });
+
+        socket.off("removedFromGroup");
+        socket.on("removedFromGroup", ({ groupId }) => {
+            set({
+                groups: get().groups.filter((g) => g._id !== groupId),
+                selectedGroup: get().selectedGroup?._id === groupId ? null : get().selectedGroup,
+            });
+        });
     },
 
     unsubscribeFromChat: () => {
@@ -133,6 +181,9 @@ export const useChatStore = create((set, get) => ({
         socket.off("messageReaction");
         socket.off("messageEdited");
         socket.off("messageLinkPreview");
+        socket.off("newGroup");
+        socket.off("groupUpdated");
+        socket.off("removedFromGroup");
     },
 
     emitTyping: () => {
@@ -155,6 +206,130 @@ export const useChatStore = create((set, get) => ({
         } finally {
             set({ isUsersLoading: false });
         }
+    },
+
+    getGroups: async () => {
+        set({ isGroupsLoading: true });
+        try {
+            const res = await axiosInstanstnce.get("/groups");
+            set({ groups: res.data });
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to load groups");
+        } finally {
+            set({ isGroupsLoading: false });
+        }
+    },
+
+    createGroup: async (data) => {
+        try {
+            const res = await axiosInstanstnce.post("/groups", data);
+            set({ groups: [res.data, ...get().groups] });
+            return res.data;
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to create group");
+            return null;
+        }
+    },
+
+    getGroupMessages: async (groupId) => {
+        set({ isMessagesLoading: true });
+        try {
+            const res = await axiosInstanstnce.get(`/groups/${groupId}/messages`);
+            set({ messages: res.data });
+            // opening clears the unread badge optimistically
+            set({
+                groups: get().groups.map((g) =>
+                    g._id === groupId ? { ...g, unreadCount: 0 } : g
+                ),
+            });
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to load messages");
+        } finally {
+            set({ isMessagesLoading: false });
+        }
+    },
+
+    markGroupRead: async (groupId) => {
+        set({
+            groups: get().groups.map((g) =>
+                g._id === groupId ? { ...g, unreadCount: 0 } : g
+            ),
+        });
+        try {
+            await axiosInstanstnce.put(`/groups/${groupId}/read`);
+        } catch {
+            // non-critical
+        }
+    },
+
+    updateGroup: async (groupId, data) => {
+        try {
+            const res = await axiosInstanstnce.put(`/groups/${groupId}`, data);
+            get().applyGroupUpdate(res.data);
+            return res.data;
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to update group");
+            return null;
+        }
+    },
+
+    addGroupMembers: async (groupId, memberIds) => {
+        try {
+            const res = await axiosInstanstnce.post(`/groups/${groupId}/members`, { memberIds });
+            get().applyGroupUpdate(res.data);
+            return res.data;
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to add members");
+            return null;
+        }
+    },
+
+    removeGroupMember: async (groupId, userId) => {
+        try {
+            const res = await axiosInstanstnce.delete(`/groups/${groupId}/members/${userId}`);
+            get().applyGroupUpdate(res.data);
+            return res.data;
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to remove member");
+            return null;
+        }
+    },
+
+    setGroupAdmin: async (groupId, userId, makeAdmin) => {
+        try {
+            const res = await axiosInstanstnce.put(`/groups/${groupId}/members/${userId}/admin`, { makeAdmin });
+            get().applyGroupUpdate(res.data);
+            return res.data;
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to update admin");
+            return null;
+        }
+    },
+
+    leaveGroup: async (groupId) => {
+        try {
+            await axiosInstanstnce.post(`/groups/${groupId}/leave`);
+            set({
+                groups: get().groups.filter((g) => g._id !== groupId),
+                selectedGroup: get().selectedGroup?._id === groupId ? null : get().selectedGroup,
+            });
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to leave group");
+        }
+    },
+
+    // merge an updated group into the list + the open group
+    applyGroupUpdate: (group) => {
+        const exists = get().groups.some((g) => g._id === group._id);
+        set({
+            groups: exists
+                ? get().groups.map((g) => (g._id === group._id ? { ...g, ...group } : g))
+                : [group, ...get().groups],
+            selectedGroup:
+                get().selectedGroup?._id === group._id
+                    ? { ...get().selectedGroup, ...group }
+                    : get().selectedGroup,
+        });
     },
 
     getAllContacts: async () => {
@@ -210,13 +385,18 @@ export const useChatStore = create((set, get) => ({
     },
 
     sendMessage: async (messageData) => {
-        const { selectedUser, messages, replyingTo } = get();
+        const { selectedUser, selectedGroup, messages, replyingTo } = get();
+        const payload = { ...messageData, replyTo: replyingTo?._id || null };
         try {
-            const res = await axiosInstanstnce.post(`/messages/send/${selectedUser._id}`, {
-                ...messageData,
-                replyTo: replyingTo?._id || null,
-            });
-            set({ messages: [...messages, res.data], replyingTo: null });
+            let res;
+            if (selectedGroup) {
+                res = await axiosInstanstnce.post(`/groups/${selectedGroup._id}/messages`, payload);
+                set({ messages: [...messages, res.data], replyingTo: null });
+                get().getGroups();
+            } else {
+                res = await axiosInstanstnce.post(`/messages/send/${selectedUser._id}`, payload);
+                set({ messages: [...messages, res.data], replyingTo: null });
+            }
         } catch (error) {
             toast.error(error.response?.data?.message || "Failed to send message");
         }
